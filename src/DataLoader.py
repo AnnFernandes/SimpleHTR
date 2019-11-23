@@ -8,6 +8,15 @@ import cv2
 from SamplePreprocessor import preprocess
 
 
+class FilePaths:
+    """ Filenames and paths to data """
+    fnCharList = '../model/charList.txt'
+    fnWordCharList = '../model/wordCharList.txt'
+    fnCorpus = '../data/corpus.txt'
+    fnAccuracy = '../model/accuracy.txt'
+    fnTrain = '/path/to/training/data/'
+    fnInfer = '/path/to/infer/data/'
+
 class Sample:
 	"sample from the dataset"
 	def __init__(self, gtText, filePath):
