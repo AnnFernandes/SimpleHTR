@@ -36,7 +36,7 @@ class DataLoader:
 		self.imgSize = imgSize
 		self.samples = []
 	
-		f=open(filePath+'words.txt')
+		f=open(filePath+'lines.txt')
 		chars = set()
 		bad_samples = []
 		bad_samples_reference = ['a01-117-05-02.png', 'r06-022-03-05.png']
@@ -50,7 +50,7 @@ class DataLoader:
 			
 			# filename: part1-part2-part3 --> part1/part1-part2/part1-part2-part3.png
 			fileNameSplit = lineSplit[0].split('-')
-			fileName = filePath + 'words/' + fileNameSplit[0] + '/' + fileNameSplit[0] + '-' + fileNameSplit[1] + '/' + lineSplit[0] + '.png'
+			fileName = filePath + 'lines/' + fileNameSplit[0] + '/' + fileNameSplit[0] + '-' + fileNameSplit[1] + '/' + lineSplit[0] + '.png'
 
 			# GT text are columns starting at 9
 			gtText = self.truncateLabel(' '.join(lineSplit[8:]), maxTextLen)
