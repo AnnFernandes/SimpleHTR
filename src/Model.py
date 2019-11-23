@@ -6,7 +6,6 @@ import numpy as np
 import tensorflow as tf
 import os
 
-
 class DecoderType:
 	BestPath = 0
 	BeamSearch = 1
