@@ -8,7 +8,7 @@ import numpy as np
 import tensorflow as tf
 
 from DataLoader import Batch, DataLoader, FilePaths
-from SamplePreprocessor import preprocessor, wer
+from SamplePreprocessor import preprocess, wer
 from Model import DecoderType, Model
 
 # # Disable GPU
