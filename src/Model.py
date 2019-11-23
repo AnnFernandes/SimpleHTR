@@ -133,27 +133,28 @@ class Model:
 
 
 	def setupRNN(self):
-		"create RNN layers and return output of these layers"
-		rnnIn4d = tf.slice(rnnIn4d, [0, 0, 0, 0], [self.batchSize, 100, 1, 512])
-        	rnnIn3d = tf.squeeze(rnnIn4d)
+		""" Create RNN layers and return output of these layers """
+		rnnIn4d = tf.slice(self.cnnOut4d, [0, 0, 0, 0], [self.batchSize, 100, 1, 512])
+		rnnIn3d = tf.squeeze(rnnIn4d)
 
-		# basic cells which is used to build RNN
+		# 2 layers of LSTM cell used to build RNN
 		numHidden = 512
-		cells = [tf.contrib.rnn.LSTMCell(num_units=numHidden, state_is_tuple=True) for _ in range(2)] # 2 layers
+		cells = [tf.nn.rnn_cell.LSTMCell(
+		    numHidden, name='basic_lstm_cell') for _ in range(2)]
+		stacked = tf.nn.rnn_cell.MultiRNNCell(cells, state_is_tuple=True)
 
-		# stack basic cells
-		stacked = tf.contrib.rnn.MultiRNNCell(cells, state_is_tuple=True)
-
-		# bidirectional RNN
+		# Bi-directional RNN
 		# BxTxF -> BxTx2H
-		((fw, bw), _) = tf.nn.bidirectional_dynamic_rnn(cell_fw=stacked, cell_bw=stacked, inputs=rnnIn3d, dtype=rnnIn3d.dtype)
-									
+		((forward, backward), _) = tf.nn.bidirectional_dynamic_rnn(
+		    cell_fw=stacked, cell_bw=stacked, inputs=rnnIn3d, dtype=rnnIn3d.dtype)
+
 		# BxTxH + BxTxH -> BxTx2H -> BxTx1X2H
-		concat = tf.expand_dims(tf.concat([fw, bw], 2), 2)
-									
-		# project output to chars (including blank): BxTx1x2H -> BxTx1xC -> BxTxC
-		kernel = tf.Variable(tf.truncated_normal([1, 1, numHidden * 2, len(self.charList) + 1], stddev=0.1))
-		self.rnnOut3d = tf.squeeze(tf.nn.atrous_conv2d(value=concat, filters=kernel, rate=1, padding='SAME'), axis=[2])
+		concat = tf.expand_dims(tf.concat([forward, backward], 2), 2)
+
+		# Project output to chars (including blank): BxTx1x2H -> BxTx1xC -> BxTxC
+		kernel = tf.Variable(tf.truncated_normal(
+		    [1, 1, numHidden*2, len(self.charList)+1], stddev=0.1))
+		return tf.squeeze(tf.nn.atrous_conv2d(value=concat, filters=kernel, rate=1, padding='SAME'), axis=[2])
 		
 
 	def setupCTC(self):
