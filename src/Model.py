@@ -177,10 +177,8 @@ class Model:
         with tf.name_scope('CTC_Decoder'):
             # Decoder: Best path decoding or Word beam search decoding
             if self.decoderType == DecoderType.BestPath:
-                decoder = tf.nn.ctc_greedy_decoder(
-                    inputs=ctcIn3dTBC, sequence_length=self.seqLen)
-      
-
+                decoder = tf.nn.ctc_greedy_decoder(inputs=ctcIn3dTBC, sequence_length=self.seqLen)
+		
         # Return a CTC operation to compute the loss and CTC operation to decode the RNN output
         return (tf.reduce_mean(loss), decoder)
 
