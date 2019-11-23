@@ -73,7 +73,7 @@ def train(model, loader):
             break
 
 def validate(model, loader):
-""" Validate neural network """
+    """ Validate neural network """
     print('Validate neural network')
     loader.validationSet()
     numCharErr = 0
