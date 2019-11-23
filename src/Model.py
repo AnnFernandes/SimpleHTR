@@ -18,8 +18,8 @@ class DecoderType:
 
 class Model:
     # Model Constants
-    batchSize = 10
-    imgSize = (800, 64)
+    batchSize = 20
+    imgSize = (800, 54)
     maxTextLen = 100
 
     def __init__(self, charList, decoderType=DecoderType.BestPath, mustRestore=False):
