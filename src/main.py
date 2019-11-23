@@ -73,8 +73,7 @@ def train(model, loader):
             break
 
 
-def validate(model, loader):
-    """ Validate neural network """
+""" Validate neural network """
     print('Validate neural network')
     loader.validationSet()
     numCharErr = 0
@@ -95,7 +94,7 @@ def validate(model, loader):
             numWordOK += 1 if batch.gtTexts[i] == recognized[i] else 0
             numWordTotal += 1
             dist = editdistance.eval(recognized[i], batch.gtTexts[i])
-
+            ## editdistance
             currCER = dist/max(len(recognized[i]), len(batch.gtTexts[i]))
             totalCER.append(currCER)
 
@@ -108,18 +107,12 @@ def validate(model, loader):
                   batch.gtTexts[i] + '"', '->', '"' + recognized[i] + '"')
 
     # Print validation result
-    try:
-        charErrorRate = sum(totalCER)/len(totalCER)
-        wordErrorRate = sum(totalWER)/len(totalWER)
-        textLineAccuracy = numWordOK / numWordTotal
-    except ZeroDivisionError:
-        charErrorRate = 0
-        wordErrorRate = 0
-        textLineAccuracy = 0
-    print('Character error rate: %f%%. Text line accuracy: %f%%. Word error rate: %f%%' %
-          (charErrorRate*100.0, textLineAccuracy*100.0, wordErrorRate*100.0))
-    return charErrorRate, textLineAccuracy, wordErrorRate
-
+    charErrorRate = sum(totalCER)/len(totalCER)
+    addressAccuracy = numWordOK / numWordTotal
+    wordErrorRate = sum(totalWER)/len(totalWER)
+    print('Character error rate: %f%%. Address accuracy: %f%%. Word error rate: %f%%' %
+          (charErrorRate*100.0, addressAccuracy*100.0, wordErrorRate*100.0))
+    return charErrorRate, addressAccuracy, wordErrorRate
 
 def infer(model, fnImg):
     """ Recognize text in image provided by file path """
