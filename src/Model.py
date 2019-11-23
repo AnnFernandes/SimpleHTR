@@ -145,11 +145,10 @@ class Model:
 
 		# Bi-directional RNN
 		# BxTxF -> BxTx2H
-		((forward, backward), _) = tf.nn.bidirectional_dynamic_rnn(
-		    cell_fw=stacked, cell_bw=stacked, inputs=rnnIn3d, dtype=rnnIn3d.dtype)
+		((fw, bw), _) = tf.nn.bidirectional_dynamic_rnn(cell_fw=stacked, cell_bw=stacked, inputs=rnnIn3d, dtype=rnnIn3d.dtype)
 
 		# BxTxH + BxTxH -> BxTx2H -> BxTx1X2H
-		concat = tf.expand_dims(tf.concat([forward, backward], 2), 2)
+		concat = tf.expand_dims(tf.concat([fw, bw], 2), 2)
 
 		# Project output to chars (including blank): BxTx1x2H -> BxTx1xC -> BxTxC
 		kernel = tf.Variable(tf.truncated_normal(
