@@ -135,8 +135,7 @@ class Model:
 	def setupRNN(self):
 		
 		"create RNN layers and return output of these layers"
-		rnnIn4d = tf.slice(rnnIn4d, [0, 0, 0, 0], [
-                           self.batchSize, 100, 1, 512])
+		rnnIn4d = tf.slice(rnnIn4d, [0, 0, 0, 0], [self.batchSize, 100, 1, 512])
         	rnnIn3d = tf.squeeze(rnnIn4d)
 
 		# basic cells which is used to build RNN
