@@ -18,7 +18,7 @@ class DecoderType:
 
 class Model:
     # Model Constants
-    batchSize = 50
+    batchSize = 10
     imgSize = (800, 64)
     maxTextLen = 100
 
