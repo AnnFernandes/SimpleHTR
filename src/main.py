@@ -72,7 +72,7 @@ def train(model, loader):
                   earlyStopping)
             break
 
-
+def validate(model, loader):
 """ Validate neural network """
     print('Validate neural network')
     loader.validationSet()
