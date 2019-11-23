@@ -1,30 +1,18 @@
-from __future__ import division
-from __future__ import print_function
-
-import sys
-import argparse
-import cv2
-import editdistance
-from DataLoader import DataLoader, Batch
-from Model import Model, DecoderType
-from SamplePreprocessor import preprocess
 import argparse
 import os
+import sys
 
+import cv2
+import editdistance
 import numpy as np
 import tensorflow as tf
+
+from DataLoader import Batch, DataLoader, FilePaths
+from helpers import preprocessor, wer
 from Model import DecoderType, Model
 
-
-class FilePaths:
-	"filenames and paths to data"
-	fnCharList = '../model/charList.txt'
-	fnAccuracy = '../model/accuracy.txt'
-	fnTrain = '../data/'
-	fnInfer = '../data/test.png'
-	fnCorpus = '../data/corpus.txt'
-
-
+# # Disable GPU
+# os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 
 
 def train(model, loader):
@@ -182,4 +170,3 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
