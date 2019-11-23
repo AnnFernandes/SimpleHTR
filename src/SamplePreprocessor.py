@@ -9,50 +9,43 @@ from skimage.filters import threshold_local, threshold_yen
 SMALL_HEIGHT = 800
 
 
-def preprocess(imgPath, imgSize, binary=True):
-    """ Pre-processing image for predicting """
-    img = cv2.imread(imgPath)
-    # Binary
-    if binary:
-        brightness = 0
-        contrast = 50
-        img = np.int16(img)
-        img = img * (contrast/127+1) - contrast + brightness
-        img = np.clip(img, 0, 255)
-        img = np.uint8(img)
+def preprocess(img, imgSize, enhance=False, dataAugmentation=False):
+    "put img into target img of size imgSize, transpose for TF and normalize gray-values"
 
-        img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        T = threshold_local(img, 11, offset=10, method="gaussian")
-        img = (img > T).astype("uint8") * 255
+    # there are damaged files in IAM dataset - just use black image instead
+    if img is None:
+        img = np.zeros([imgSize[1], imgSize[0]]) # (64,800)
+        print("Image None!")
 
-        # Increase line width
+    # increase dataset size by applying random stretches to the images
+    if dataAugmentation:
+        stretch = (random.random() - 0.5)  # -0.5 .. +0.5
+        wStretched = max(int(img.shape[1] * (1 + stretch)), 1)  # random width, but at least 1
+        img = cv2.resize(img, (wStretched, img.shape[0]))  # stretch horizontally by factor 0.5 .. 1.5
+
+    if enhance: # only if the line text has low contrast and line width is thin
+        # increase contrast
+        pxmin = np.min(img)
+        pxmax = np.max(img)
+        imgContrast = (img - pxmin) / (pxmax - pxmin) * 255
+        # increase line width
         kernel = np.ones((3, 3), np.uint8)
-        img = cv2.erode(img, kernel, iterations=1)
-    else:
-        img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        img = cv2.erode(imgContrast, kernel, iterations=1) # increase linewidth
 
-    # Create target image and copy sample image into it
+    # create target image and copy sample image into it
     (wt, ht) = imgSize
     (h, w) = img.shape
     fx = w / wt
     fy = h / ht
     f = max(fx, fy)
-
-    # Scale according to f (result at least 1 and at most wt or ht)
-    newSize = (max(min(wt, int(w / f)), 1), max(min(ht, int(h / f)), 1))
+    newSize = (max(min(wt, int(w / f)), 1),
+               max(min(ht, int(h / f)), 1))  # scale according to f (result at least 1 and at most wt or ht)
     img = cv2.resize(img, newSize)
-    target = np.ones([ht, wt]) * 255
+    target = np.ones([ht, wt]) * 255  # shape=(64,800)
     target[0:newSize[1], 0:newSize[0]] = img
 
-    # Transpose for TF
+    # transpose for TF
     img = cv2.transpose(target)
-
-    # Normalize
-    (m, s) = cv2.meanStdDev(img)
-    m = m[0][0]
-    s = s[0][0]
-    img = img - m
-    img = img / s if s > 0 else img
 
     return img
 
