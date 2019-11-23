@@ -88,7 +88,7 @@ class DataLoader:
 		self.validationWords = [x.gtText for x in self.validationSamples]
 
 		# number of randomly chosen samples per epoch for training 
-		self.numTrainSamplesPerEpoch = 25000 
+		self.numTrainSamplesPerEpoch = 100 
 		
 		# start with train set
 		self.trainSet()
