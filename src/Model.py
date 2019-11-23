@@ -135,8 +135,7 @@ class Model:
 	def setupRNN(self):
 			"create RNN layers and return output of these layers"
 			""" Create RNN layers and return output of these layers """
-		rnnIn4d = tf.slice(self.cnnOut4d, [0, 0, 0, 0], [
-				   self.batchSize, 100, 1, 512])
+		rnnIn4d = tf.slice(self.cnnOut4d, [0, 0, 0, 0], [self.batchSize, 100, 1, 512])
 		rnnIn3d = tf.squeeze(self.cnnOut4d)
 
 		# 2 layers of LSTM cell used to build RNN
