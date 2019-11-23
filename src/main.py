@@ -59,33 +59,51 @@ def train(model, loader):
 
 
 def validate(model, loader):
-	"validate NN"
-	print('Validate NN')
-	loader.validationSet()
-	numCharErr = 0
-	numCharTotal = 0
-	numWordOK = 0
-	numWordTotal = 0
-	while loader.hasNext():
-		iterInfo = loader.getIteratorInfo()
-		print('Batch:', iterInfo[0],'/', iterInfo[1])
-		batch = loader.getNext()
-		(recognized, _) = model.inferBatch(batch)
-		
-		print('Ground truth -> Recognized')	
-		for i in range(len(recognized)):
-			numWordOK += 1 if batch.gtTexts[i] == recognized[i] else 0
-			numWordTotal += 1
-			dist = editdistance.eval(recognized[i], batch.gtTexts[i])
-			numCharErr += dist
-			numCharTotal += len(batch.gtTexts[i])
-			print('[OK]' if dist==0 else '[ERR:%d]' % dist,'"' + batch.gtTexts[i] + '"', '->', '"' + recognized[i] + '"')
-	
-	# print validation result
-	charErrorRate = numCharErr / numCharTotal
-	wordAccuracy = numWordOK / numWordTotal
-	print('Character error rate: %f%%. Word accuracy: %f%%.' % (charErrorRate*100.0, wordAccuracy*100.0))
-	return charErrorRate
+    """ Validate neural network """
+    print('Validate neural network')
+    loader.validationSet()
+    numCharErr = 0
+    numCharTotal = 0
+    numWordOK = 0
+    numWordTotal = 0
+
+    totalCER = []
+    totalWER = []
+    while loader.hasNext():
+        iterInfo = loader.getIteratorInfo()
+        print('Batch:', iterInfo[0], '/', iterInfo[1])
+        batch = loader.getNext()
+        recognized = model.inferBatch(batch)
+
+        print('Ground truth -> Recognized')
+        for i in range(len(recognized)):
+            numWordOK += 1 if batch.gtTexts[i] == recognized[i] else 0
+            numWordTotal += 1
+            dist = editdistance.eval(recognized[i], batch.gtTexts[i])
+
+            currCER = dist/max(len(recognized[i]), len(batch.gtTexts[i]))
+            totalCER.append(currCER)
+
+            currWER = wer(recognized[i].split(), batch.gtTexts[i].split())
+            totalWER.append(currWER)
+
+            numCharErr += dist
+            numCharTotal += len(batch.gtTexts[i])
+            print('[OK]' if dist == 0 else '[ERR:%d]' % dist, '"' +
+                  batch.gtTexts[i] + '"', '->', '"' + recognized[i] + '"')
+
+    # Print validation result
+    try:
+        charErrorRate = sum(totalCER)/len(totalCER)
+        wordErrorRate = sum(totalWER)/len(totalWER)
+        textLineAccuracy = numWordOK / numWordTotal
+    except ZeroDivisionError:
+        charErrorRate = 0
+        wordErrorRate = 0
+        textLineAccuracy = 0
+    print('Character error rate: %f%%. Text line accuracy: %f%%. Word error rate: %f%%' %
+          (charErrorRate*100.0, textLineAccuracy*100.0, wordErrorRate*100.0))
+    return charErrorRate, textLineAccuracy, wordErrorRate
 
 
 def infer(model, fnImg):
