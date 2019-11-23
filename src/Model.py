@@ -18,8 +18,8 @@ class Model:
 
 	# model constants
 	batchSize = 50
-	imgSize = (128, 32)
-	maxTextLen = 32
+	imgSize = (800, 50)
+	maxTextLen = 100
 
 	def __init__(self, charList, decoderType=DecoderType.BestPath, mustRestore=False, dump=False):
 		"init model: add CNN, RNN and CTC and initialize TF"
@@ -56,43 +56,106 @@ class Model:
 		cnnIn4d = tf.expand_dims(input=self.inputImgs, axis=3)
 
 		# list of parameters for the layers
-		kernelVals = [5, 5, 3, 3, 3]
-		featureVals = [1, 32, 64, 128, 128, 256]
+		kernelVals = [5, 5, 3, 3, 3, 3, 3]
+		featureVals = [1, 64, 128, 128, 256, 256, 512, 512]
 		strideVals = poolVals = [(2,2), (2,2), (1,2), (1,2), (1,2)]
 		numLayers = len(strideVals)
 
 		# create layers
 		pool = cnnIn4d # input to first CNN layer
-		for i in range(numLayers):
-			kernel = tf.Variable(tf.truncated_normal([kernelVals[i], kernelVals[i], featureVals[i], featureVals[i + 1]], stddev=0.1))
-			conv = tf.nn.conv2d(pool, kernel, padding='SAME',  strides=(1,1,1,1))
-			conv_norm = tf.layers.batch_normalization(conv, training=self.is_train)
-			relu = tf.nn.relu(conv_norm)
-			pool = tf.nn.max_pool(relu, (1, poolVals[i][0], poolVals[i][1], 1), (1, strideVals[i][0], strideVals[i][1], 1), 'VALID')
+		# First Layer: Conv (5x5) + Pool (2x2) - Output size: 400 x 32 x 64
+		
+		with tf.name_scope('Conv_Pool_1'):
+		    kernel = tf.Variable(
+			tf.truncated_normal([5, 5, 1, 64], stddev=0.1))
+		    conv = tf.nn.conv2d(
+			cnnIn4d, kernel, padding='SAME', strides=(1, 1, 1, 1))
+		    relu = tf.nn.relu(conv)
+		    pool = tf.nn.max_pool(relu, (1, 2, 2, 1), (1, 2, 2, 1), 'VALID')
+
+		# Second Layer: Conv (5x5) - Output size: 400 x 32 x 128
+		with tf.name_scope('Conv_2'):
+		    kernel = tf.Variable(tf.truncated_normal(
+			[5, 5, 64, 128], stddev=0.1))
+		    conv = tf.nn.conv2d(
+			pool, kernel, padding='SAME', strides=(1, 1, 1, 1))
+		    relu = tf.nn.relu(conv)
+
+		# Third Layer: Conv (3x3) + Pool (2x2) + Simple Batch Norm - Output size: 200 x 16 x 128
+		with tf.name_scope('Conv_Pool_BN_3'):
+		    kernel = tf.Variable(tf.truncated_normal(
+			[3, 3, 128, 128], stddev=0.1))
+		    conv = tf.nn.conv2d(
+			relu, kernel, padding='SAME', strides=(1, 1, 1, 1))
+		    mean, variance = tf.nn.moments(conv, axes=[0])
+		    batch_norm = tf.nn.batch_normalization(
+			conv, mean, variance, offset=None, scale=None, variance_epsilon=0.001)
+		    relu = tf.nn.relu(batch_norm)
+		    pool = tf.nn.max_pool(relu, (1, 2, 2, 1), (1, 2, 2, 1), 'VALID')
+
+		# Fourth Layer: Conv (3x3) - Output size: 200 x 16 x 256
+		with tf.name_scope('Conv_4'):
+		    kernel = tf.Variable(tf.truncated_normal(
+			[3, 3, 128, 256], stddev=0.1))
+		    conv = tf.nn.conv2d(
+			pool, kernel, padding='SAME', strides=(1, 1, 1, 1))
+		    relu = tf.nn.relu(conv)
+
+		# Fifth Layer: Conv (3x3) - Output size: 200 x 16 x 256
+		with tf.name_scope('Conv_5'):
+		    kernel = tf.Variable(tf.truncated_normal(
+			[3, 3, 256, 256], stddev=0.1))
+		    conv = tf.nn.conv2d(
+			relu, kernel, padding='SAME', strides=(1, 1, 1, 1))
+		    relu = tf.nn.relu(conv)
+
+		# Sixth Layer: Conv (3x3) + Simple Batch Norm - Output size: 200 x 16 x 512
+		with tf.name_scope('Conv_BN_6'):
+		    kernel = tf.Variable(tf.truncated_normal(
+			[3, 3, 256, 512], stddev=0.1))
+		    conv = tf.nn.conv2d(
+			relu, kernel, padding='SAME', strides=(1, 1, 1, 1))
+		    mean, variance = tf.nn.moments(conv, axes=[0])
+		    batch_norm = tf.nn.batch_normalization(
+			conv, mean, variance, offset=None, scale=None, variance_epsilon=0.001)
+		    relu = tf.nn.relu(batch_norm)
+
+		# Seventh Layer: Conv (3x3) + Pool (2x2) - Output size: 100 x 8 x 512
+		with tf.name_scope('Conv_Pool_7'):
+		    kernel = tf.Variable(tf.truncated_normal(
+			[3, 3, 512, 512], stddev=0.1))
+		    conv = tf.nn.conv2d(
+			relu, kernel, padding='SAME', strides=(1, 1, 1, 1))
+		    relu = tf.nn.relu(conv)
+		    pool = tf.nn.max_pool(relu, (1, 2, 2, 1), (1, 2, 2, 1), 'VALID')
 
 		self.cnnOut4d = pool
 
 
 	def setupRNN(self):
-		"create RNN layers and return output of these layers"
-		rnnIn3d = tf.squeeze(self.cnnOut4d, axis=[2])
+			"create RNN layers and return output of these layers"
+			""" Create RNN layers and return output of these layers """
+		rnnIn4d = tf.slice(self.cnnOut4d, [0, 0, 0, 0], [
+				   self.batchSize, 100, 1, 512])
+		rnnIn3d = tf.squeeze(self.cnnOut4d)
 
-		# basic cells which is used to build RNN
-		numHidden = 256
-		cells = [tf.contrib.rnn.LSTMCell(num_units=numHidden, state_is_tuple=True) for _ in range(2)] # 2 layers
+		# 2 layers of LSTM cell used to build RNN
+		numHidden = 512
+		cells = [tf.nn.rnn_cell.LSTMCell(
+		    numHidden, name='basic_lstm_cell') for _ in range(2)]
+		stacked = tf.nn.rnn_cell.MultiRNNCell(cells, state_is_tuple=True)
 
-		# stack basic cells
-		stacked = tf.contrib.rnn.MultiRNNCell(cells, state_is_tuple=True)
-
-		# bidirectional RNN
+		# Bi-directional RNN
 		# BxTxF -> BxTx2H
-		((fw, bw), _) = tf.nn.bidirectional_dynamic_rnn(cell_fw=stacked, cell_bw=stacked, inputs=rnnIn3d, dtype=rnnIn3d.dtype)
-									
+		((forward, backward), _) = tf.nn.bidirectional_dynamic_rnn(
+		    cell_fw=stacked, cell_bw=stacked, inputs=rnnIn3d, dtype=rnnIn3d.dtype)
+
 		# BxTxH + BxTxH -> BxTx2H -> BxTx1X2H
-		concat = tf.expand_dims(tf.concat([fw, bw], 2), 2)
-									
-		# project output to chars (including blank): BxTx1x2H -> BxTx1xC -> BxTxC
-		kernel = tf.Variable(tf.truncated_normal([1, 1, numHidden * 2, len(self.charList) + 1], stddev=0.1))
+		concat = tf.expand_dims(tf.concat([forward, backward], 2), 2)
+
+		# Project output to chars (including blank): BxTx1x2H -> BxTx1xC -> BxTxC
+		kernel = tf.Variable(tf.truncated_normal(
+		    [1, 1, numHidden*2, len(self.charList)+1], stddev=0.1))
 		self.rnnOut3d = tf.squeeze(tf.nn.atrous_conv2d(value=concat, filters=kernel, rate=1, padding='SAME'), axis=[2])
 		
 
