@@ -299,8 +299,9 @@ class Model:
         # open('mat_0.csv', 'w').write(csv)
 
         return self.decoderOutputToText(decoded)
-
+    
     def save(self):
         """ Save model to file """
         self.snapID += 1
         self.saver.save(self.sess, '../model/snapshot',
+                        global_step=self.snapID)
