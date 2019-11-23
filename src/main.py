@@ -25,6 +25,8 @@ class FilePaths:
 	fnCorpus = '../data/corpus.txt'
 
 
+
+
 def train(model, loader):
     """ Train the neural network """
     epoch = 0  # Number of training epochs since start
@@ -82,6 +84,7 @@ def train(model, loader):
                   earlyStopping)
             break
 
+
 def validate(model, loader):
     """ Validate neural network """
     print('Validate neural network')
@@ -131,58 +134,52 @@ def validate(model, loader):
 
 
 def infer(model, fnImg):
-	"recognize text in image provided by file path"
-	img = preprocess(cv2.imread(fnImg, cv2.IMREAD_GRAYSCALE), Model.imgSize)
-	batch = Batch(None, [img])
-	(recognized, probability) = model.inferBatch(batch, True)
-	print('Recognized:', '"' + recognized[0] + '"')
-	print('Probability:', probability[0])
+    """ Recognize text in image provided by file path """
+    img = preprocessor(fnImg, model.imgSize, binary=True)
+    # Fill all batch elements with same input image
+    batch = Batch(None, [img] * Model.batchSize)
+    recognized = model.inferBatch(batch)  # recognize text
+    # All batch elements hold same result
+    print('Recognized:', '"' + recognized[0] + '"')
 
 
 def main():
-	"main function"
-	# optional command line args
-	parser = argparse.ArgumentParser()
-	parser.add_argument('--train', help='train the NN', action='store_true')
-	parser.add_argument('--validate', help='validate the NN', action='store_true')
-	parser.add_argument('--beamsearch', help='use beam search instead of best path decoding', action='store_true')
-	parser.add_argument('--wordbeamsearch', help='use word beam search instead of best path decoding', action='store_true')
-	parser.add_argument('--dump', help='dump output of NN to CSV file(s)', action='store_true')
+    """ Main function """
+    # Opptional command line args
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--train", help="train the neural network", action="store_true")
+    parser.add_argument(
+        "--validate", help="validate the neural network", action="store_true")
+    parser.add_argument(
+        "--wordbeamsearch", help="use word beam search instead of best path decoding", action="store_true")
+    args = parser.parse_args()
 
-	args = parser.parse_args()
+    decoderType = DecoderType.BestPath
+    if args.wordbeamsearch:
+        decoderType = DecoderType.WordBeamSearch
 
-	decoderType = DecoderType.BestPath
-	if args.beamsearch:
-		decoderType = DecoderType.BeamSearch
-	elif args.wordbeamsearch:
-		decoderType = DecoderType.WordBeamSearch
+    # Train or validate on Cinnamon dataset
+    if args.train or args.validate:
+        # Load training data, create TF model
+        loader = DataLoader(FilePaths.fnTrain, Model.batchSize,
+                            Model.imgSize, Model.maxTextLen)
 
-	# train or validate on IAM dataset	
-	if args.train or args.validate:
-		# load training data, create TF model
-		loader = DataLoader(FilePaths.fnTrain, Model.batchSize, Model.imgSize, Model.maxTextLen)
+        # Execute training or validation
+        if args.train:
+            model = Model(loader.charList, decoderType)
+            train(model, loader)
+        elif args.validate:
+            model = Model(loader.charList, decoderType, mustRestore=True)
+            validate(model, loader)
 
-		# save characters of model for inference mode
-		open(FilePaths.fnCharList, 'w').write(str().join(loader.charList))
-		
-		# save words contained in dataset into file
-		open(FilePaths.fnCorpus, 'w').write(str(' ').join(loader.trainWords + loader.validationWords))
-
-		# execute training or validation
-		if args.train:
-			model = Model(loader.charList, decoderType)
-			train(model, loader)
-		elif args.validate:
-			model = Model(loader.charList, decoderType, mustRestore=True)
-			validate(model, loader)
-
-	# infer text on test image
-	else:
-		print(open(FilePaths.fnAccuracy).read())
-		model = Model(open(FilePaths.fnCharList).read(), decoderType, mustRestore=True, dump=args.dump)
-		infer(model, FilePaths.fnInfer)
+    # Infer text on test image
+    else:
+        print(open(FilePaths.fnAccuracy).read())
+        model = Model(open(FilePaths.fnCharList).read(),
+                      decoderType, mustRestore=False)
+        infer(model, FilePaths.fnInfer)
 
 
 if __name__ == '__main__':
-	main()
-
+    main()
