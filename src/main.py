@@ -20,43 +20,61 @@ class FilePaths:
 
 
 def train(model, loader):
-	"train NN"
-	epoch = 0 # number of training epochs since start
-	bestCharErrorRate = float('inf') # best valdiation character error rate
-	noImprovementSince = 0 # number of epochs no improvement of character error rate occured
-	earlyStopping = 5 # stop training after this number of epochs without improvement
-	while True:
-		epoch += 1
-		print('Epoch:', epoch)
+    """ Train the neural network """
+    epoch = 0  # Number of training epochs since start
+    bestCharErrorRate = float('inf')  # Best valdiation character error rate
+    noImprovementSince = 0  # Number of epochs no improvement of character error rate occured
+    earlyStopping = 8  # Stop training after this number of epochs without improvement
+    batchNum = 0
 
-		# train
-		print('Train NN')
-		loader.trainSet()
-		while loader.hasNext():
-			iterInfo = loader.getIteratorInfo()
-			batch = loader.getNext()
-			loss = model.trainBatch(batch)
-			print('Batch:', iterInfo[0],'/', iterInfo[1], 'Loss:', loss)
+    totalEpoch = len(loader.trainSamples)//loader.numTrainSamplesPerEpoch
 
-		# validate
-		charErrorRate = validate(model, loader)
-		
-		# if best validation accuracy so far, save model parameters
-		if charErrorRate < bestCharErrorRate:
-			print('Character error rate improved, save model')
-			bestCharErrorRate = charErrorRate
-			noImprovementSince = 0
-			model.save()
-			open(FilePaths.fnAccuracy, 'w').write('Validation character error rate of saved model: %f%%' % (charErrorRate*100.0))
-		else:
-			print('Character error rate not improved')
-			noImprovementSince += 1
+    while True:
+        epoch += 1
+        print('Epoch:', epoch, '/', totalEpoch)
 
-		# stop training if no more improvement in the last x epochs
-		if noImprovementSince >= earlyStopping:
-			print('No more improvement since %d epochs. Training stopped.' % earlyStopping)
-			break
+        # Train
+        print('Train neural network')
+        loader.trainSet()
+        while loader.hasNext():
+            batchNum += 1
+            iterInfo = loader.getIteratorInfo()
+            batch = loader.getNext()
+            loss = model.trainBatch(batch, batchNum)
+            print('Batch:', iterInfo[0], '/', iterInfo[1], 'Loss:', loss)
 
+        # Validate
+        charErrorRate, textLineAccuracy, wordErrorRate = validate(model, loader)
+        cer_summary = tf.Summary(value=[tf.Summary.Value(
+            tag='charErrorRate', simple_value=charErrorRate)])  # Tensorboard: Track charErrorRate
+        # Tensorboard: Add cer_summary to writer
+        model.writer.add_summary(cer_summary, epoch)
+        text_line_summary = tf.Summary(value=[tf.Summary.Value(
+            tag='textLineAccuracy', simple_value=textLineAccuracy)])  # Tensorboard: Track textLineAccuracy
+        # Tensorboard: Add text_line_summary to writer
+        model.writer.add_summary(text_line_summary, epoch)
+        wer_summary = tf.Summary(value=[tf.Summary.Value(
+            tag='wordErrorRate', simple_value=wordErrorRate)])  # Tensorboard: Track wordErrorRate
+        # Tensorboard: Add wer_summary to writer
+        model.writer.add_summary(wer_summary, epoch)
+
+        # If best validation accuracy so far, save model parameters
+        if charErrorRate < bestCharErrorRate:
+            print('Character error rate improved, save model')
+            bestCharErrorRate = charErrorRate
+            noImprovementSince = 0
+            model.save()
+            open(FilePaths.fnAccuracy, 'w').write(
+                'Validation character error rate of saved model: %f%%' % (charErrorRate*100.0))
+        else:
+            print('Character error rate not improved')
+            noImprovementSince += 1
+
+        # Stop training if no more improvement in the last x epochs
+        if noImprovementSince >= earlyStopping:
+            print('No more improvement since %d epochs. Training stopped.' %
+                  earlyStopping)
+            break
 
 def validate(model, loader):
     """ Validate neural network """
