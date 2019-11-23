@@ -9,7 +9,7 @@ from skimage.filters import threshold_local, threshold_yen
 SMALL_HEIGHT = 800
 
 
-def preprocessor(imgPath, imgSize, binary=True):
+def preprocess(imgPath, imgSize, binary=True):
     """ Pre-processing image for predicting """
     img = cv2.imread(imgPath)
     # Binary
