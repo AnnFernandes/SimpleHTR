@@ -9,13 +9,13 @@ from SamplePreprocessor import preprocess
 
 
 class FilePaths:
-    """ Filenames and paths to data """
-    fnCharList = '../model/charList.txt'
-    fnWordCharList = '../model/wordCharList.txt'
-    fnCorpus = '../data/corpus.txt'
-    fnAccuracy = '../model/accuracy.txt'
-    fnTrain = '/path/to/training/data/'
-    fnInfer = '/path/to/infer/data/'
+	"filenames and paths to data"
+	fnCharList = '../model/charList.txt'
+	fnAccuracy = '../model/accuracy.txt'
+	fnTrain = '../data/'
+	fnInfer = '../data/test.png'
+	fnCorpus = '../data/corpus.txt'
+
 
 class Sample:
 	"sample from the dataset"
