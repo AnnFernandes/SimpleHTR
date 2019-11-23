@@ -1,25 +1,22 @@
 from __future__ import division
 from __future__ import print_function
-
+import codecs
 import sys
-import numpy as np
-import tensorflow as tf
-import os
 
 import tensorflow as tf
 
+from DataLoader import FilePaths
 
 
 class DecoderType:
-	BestPath = 0
-	BeamSearch = 1
-	WordBeamSearch = 2
+    BestPath = 0
+    WordBeamSearch = 1
 
 
 class Model:
     # Model Constants
-    batchSize = 10
-    imgSize = (800, 54)
+    batchSize = 50
+    imgSize = (800, 64)
     maxTextLen = 100
 
     def __init__(self, charList, decoderType=DecoderType.BestPath, mustRestore=False):
@@ -177,8 +174,26 @@ class Model:
         with tf.name_scope('CTC_Decoder'):
             # Decoder: Best path decoding or Word beam search decoding
             if self.decoderType == DecoderType.BestPath:
-                decoder = tf.nn.ctc_greedy_decoder(inputs=ctcIn3dTBC, sequence_length=self.seqLen)
-		
+                decoder = tf.nn.ctc_greedy_decoder(
+                    inputs=ctcIn3dTBC, sequence_length=self.seqLen)
+            elif self.decoderType == DecoderType.WordBeamSearch:
+                # Import compiled word beam search operation (see https://github.com/githubharald/CTCWordBeamSearch)
+                word_beam_search_module = tf.load_op_library(
+                    './TFWordBeamSearch.so')
+
+                # Prepare: dictionary, characters in dataset, characters forming words
+                chars = codecs.open(FilePaths.fnCharList, 'r', 'utf8').read()
+                wordChars = codecs.open(
+                    FilePaths.fnWordCharList, 'r', 'utf8').read()
+                corpus = codecs.open(FilePaths.fnCorpus, 'r', 'utf8').read()
+
+                # # Decoder using the "NGramsForecastAndSample": restrict number of (possible) next words to at most 20 words: O(W) mode of word beam search
+                # decoder = word_beam_search_module.word_beam_search(tf.nn.softmax(ctcIn3dTBC, dim=2), 25, 'NGramsForecastAndSample', 0.0, corpus.encode('utf8'), chars.encode('utf8'), wordChars.encode('utf8'))
+
+                # Decoder using the "Words": only use dictionary, no scoring: O(1) mode of word beam search
+                decoder = word_beam_search_module.word_beam_search(tf.nn.softmax(
+                    ctcIn3dTBC, dim=2), 25, 'Words', 0.0, corpus.encode('utf8'), chars.encode('utf8'), wordChars.encode('utf8'))
+
         # Return a CTC operation to compute the loss and CTC operation to decode the RNN output
         return (tf.reduce_mean(loss), decoder)
 
@@ -289,4 +304,3 @@ class Model:
         """ Save model to file """
         self.snapID += 1
         self.saver.save(self.sess, '../model/snapshot',
-                        global_step=self.snapID)
