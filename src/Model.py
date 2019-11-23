@@ -175,11 +175,12 @@ class Model:
             loss = tf.nn.ctc_loss(labels=self.gtTexts, inputs=ctcIn3dTBC, sequence_length=self.seqLen,
                                   ctc_merge_repeated=True, ignore_longer_outputs_than_inputs=True)
         with tf.name_scope('CTC_Decoder'):
+            # Decoder: Best path decoding or Word beam search decoding
             if self.decoderType == DecoderType.BestPath:
-		self.decoder = tf.nn.ctc_greedy_decoder(inputs=self.ctcIn3dTBC, sequence_length=self.seqLen)
-	    elif self.decoderType == DecoderType.BeamSearch:
-		self.decoder = tf.nn.ctc_beam_search_decoder(inputs=self.ctcIn3dTBC, sequence_length=self.seqLen, beam_width=50, merge_repeated=False)
-                
+                decoder = tf.nn.ctc_greedy_decoder(
+                    inputs=ctcIn3dTBC, sequence_length=self.seqLen)
+      
+
         # Return a CTC operation to compute the loss and CTC operation to decode the RNN output
         return (tf.reduce_mean(loss), decoder)
 
