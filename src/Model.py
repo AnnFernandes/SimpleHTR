@@ -181,16 +181,14 @@ class Model:
                     inputs=ctcIn3dTBC, sequence_length=self.seqLen)
             elif self.decoderType == DecoderType.WordBeamSearch:
                 # Import compiled word beam search operation (see https://github.com/githubharald/CTCWordBeamSearch)
-                word_beam_search_module = tf.load_op_library(
-                    './TFWordBeamSearch.so')
-
-                # # Decoder using the "NGramsForecastAndSample": restrict number of (possible) next words to at most 20 words: O(W) mode of word beam search
-                # decoder = word_beam_search_module.word_beam_search(tf.nn.softmax(ctcIn3dTBC, dim=2), 25, 'NGramsForecastAndSample', 0.0, corpus.encode('utf8'), chars.encode('utf8'), wordChars.encode('utf8'))
-
-               	# prepare information about language (dictionary, characters in dataset, characters forming words) 
+                word_beam_search_module = tf.load_op_library('./TFWordBeamSearch.so')
+		
 		chars = str().join(self.charList)
 		wordChars = open('../model/wordCharList.txt').read().splitlines()[0]
 		corpus = open('../data/corpus.txt').read()
+
+		# decode using the "Words" mode of word beam search
+		self.decoder = word_beam_search_module.word_beam_search(tf.nn.softmax(self.ctcIn3dTBC, dim=2), 50, 'Words', 0.0, corpus.encode('utf8'), chars.encode('utf8'), wordChars.encode('utf8'))
 		
         # Return a CTC operation to compute the loss and CTC operation to decode the RNN output
         return (tf.reduce_mean(loss), decoder)
