@@ -6,10 +6,15 @@ import numpy as np
 import tensorflow as tf
 import os
 
+import tensorflow as tf
+
+
+
 class DecoderType:
 	BestPath = 0
 	BeamSearch = 1
 	WordBeamSearch = 2
+
 
 class Model:
     # Model Constants
@@ -179,19 +184,14 @@ class Model:
                 word_beam_search_module = tf.load_op_library(
                     './TFWordBeamSearch.so')
 
-                # Prepare: dictionary, characters in dataset, characters forming words
-                chars = codecs.open(FilePaths.fnCharList, 'r', 'utf8').read()
-                wordChars = codecs.open(
-                    FilePaths.fnWordCharList, 'r', 'utf8').read()
-                corpus = codecs.open(FilePaths.fnCorpus, 'r', 'utf8').read()
-
                 # # Decoder using the "NGramsForecastAndSample": restrict number of (possible) next words to at most 20 words: O(W) mode of word beam search
                 # decoder = word_beam_search_module.word_beam_search(tf.nn.softmax(ctcIn3dTBC, dim=2), 25, 'NGramsForecastAndSample', 0.0, corpus.encode('utf8'), chars.encode('utf8'), wordChars.encode('utf8'))
 
-                # Decoder using the "Words": only use dictionary, no scoring: O(1) mode of word beam search
-                decoder = word_beam_search_module.word_beam_search(tf.nn.softmax(
-                    ctcIn3dTBC, dim=2), 25, 'Words', 0.0, corpus.encode('utf8'), chars.encode('utf8'), wordChars.encode('utf8'))
-
+               	# prepare information about language (dictionary, characters in dataset, characters forming words) 
+		chars = str().join(self.charList)
+		wordChars = open('../model/wordCharList.txt').read().splitlines()[0]
+		corpus = open('../data/corpus.txt').read()
+		
         # Return a CTC operation to compute the loss and CTC operation to decode the RNN output
         return (tf.reduce_mean(loss), decoder)
 
@@ -217,121 +217,89 @@ class Model:
 
         return (sess, saver)
 
-	def toSparse(self, texts):
-		"put ground truth texts into sparse tensor for ctc_loss"
-		indices = []
-		values = []
-		shape = [len(texts), 0] # last entry must be max(labelList[i])
+    def toSpare(self, texts):
+        """ Convert ground truth texts into sparse tensor for ctc_loss """
+        indices = []
+        values = []
+        shape = [len(texts), 0]  # Last entry must be max(labelList[i])
+        # Go over all texts
+        for (batchElement, texts) in enumerate(texts):
+            # Convert to string of label (i.e. class-ids)
+            print(texts)
+            labelStr = []
+            for c in texts:
+                print(c, '|', end='')
+                labelStr.append(self.charList.index(c))
+            print(' ')
+            # labelStr = [self.charList.index(c) for c in texts]
+            # Sparse tensor must have size of max. label-string
+            if len(labelStr) > shape[1]:
+                shape[1] = len(labelStr)
+            # Put each label into sparse tensor
+            for (i, label) in enumerate(labelStr):
+                indices.append([batchElement, i])
+                values.append(label)
 
-		# go over all texts
-		for (batchElement, text) in enumerate(texts):
-			# convert to string of label (i.e. class-ids)
-			labelStr = [self.charList.index(c) for c in text]
-			# sparse tensor must have size of max. label-string
-			if len(labelStr) > shape[1]:
-				shape[1] = len(labelStr)
-			# put each label into sparse tensor
-			for (i, label) in enumerate(labelStr):
-				indices.append([batchElement, i])
-				values.append(label)
+        return (indices, values, shape)
 
-		return (indices, values, shape)
+    def decoderOutputToText(self, ctcOutput):
+        """ Extract texts from output of CTC decoder """
+        # Contains string of labels for each batch element
+        encodedLabelStrs = [[] for i in range(Model.batchSize)]
+        # Word beam search: label strings terminated by blank
+        if self.decoderType == DecoderType.WordBeamSearch:
+            blank = len(self.charList)
+            for b in range(Model.batchSize):
+                for label in ctcOutput[b]:
+                    if label == blank:
+                        break
+                    encodedLabelStrs[b].append(label)
+        # TF decoders: label strings are contained in sparse tensor
+        else:
+            # Ctc returns tuple, first element is SparseTensor
+            decoded = ctcOutput[0][0]
+            # Go over all indices and save mapping: batch -> values
+            #idxDict = {b : [] for b in range(Model.batchSize)}
+            for (idx, idx2d) in enumerate(decoded.indices):
+                label = decoded.values[idx]
+                batchElement = idx2d[0]  # index according to [b,t]
+                encodedLabelStrs[batchElement].append(label)
+        # Map labels to chars for all batch elements
+        return [str().join([self.charList[c] for c in labelStr]) for labelStr in encodedLabelStrs]
 
+    def trainBatch(self, batch, batchNum):
+        """ Feed a batch into the NN to train it """
+        spare = self.toSpare(batch.gtTexts)
+        rate = 0.01 if self.batchesTrained < 10 else (
+            0.001 if self.batchesTrained < 2750 else 0.0001)
+        (loss_summary, _, lossVal) = self.sess.run([self.merge, self.optimizer, self.loss], {
+            self.inputImgs: batch.imgs, self.gtTexts: spare, self.seqLen: [Model.maxTextLen] * Model.batchSize, self.learningRate: rate})
+        # Tensorboard: Add loss_summary to writer
+        self.writer.add_summary(loss_summary, batchNum)
+        self.batchesTrained += 1
+        return lossVal
 
-	def decoderOutputToText(self, ctcOutput, batchSize):
-		"extract texts from output of CTC decoder"
-		
-		# contains string of labels for each batch element
-		encodedLabelStrs = [[] for i in range(batchSize)]
+    def inferBatch(self, batch):
+        """ Feed a batch into the NN to recognize texts """
+        decoded = self.sess.run(self.decoder, {self.inputImgs: batch.imgs, self.seqLen: [
+                                Model.maxTextLen] * Model.batchSize})
 
-		# word beam search: label strings terminated by blank
-		if self.decoderType == DecoderType.WordBeamSearch:
-			blank=len(self.charList)
-			for b in range(batchSize):
-				for label in ctcOutput[b]:
-					if label==blank:
-						break
-					encodedLabelStrs[b].append(label)
+        # # Dump RNN output to .csv file
+        # decoded, rnnOutput = self.sess.run([self.decoder, self.rnnOutput], {
+        #                                    self.inputImgs: batch.imgs, self.seqLen: [Model.maxTextLen] * Model.batchSize})
+        # s = rnnOutput.shape
+        # b = 0
+        # csv = ''
+        # for t in range(s[0]):
+        #     for c in range(s[2]):
+        #         csv += str(rnnOutput[t, b, c]) + ';'
+        #     csv += '\n'
+        # open('mat_0.csv', 'w').write(csv)
 
-		# TF decoders: label strings are contained in sparse tensor
-		else:
-			# ctc returns tuple, first element is SparseTensor 
-			decoded=ctcOutput[0][0] 
+        return self.decoderOutputToText(decoded)
 
-			# go over all indices and save mapping: batch -> values
-			idxDict = { b : [] for b in range(batchSize) }
-			for (idx, idx2d) in enumerate(decoded.indices):
-				label = decoded.values[idx]
-				batchElement = idx2d[0] # index according to [b,t]
-				encodedLabelStrs[batchElement].append(label)
-
-		# map labels to chars for all batch elements
-		return [str().join([self.charList[c] for c in labelStr]) for labelStr in encodedLabelStrs]
-
-
-	def trainBatch(self, batch):
-		"feed a batch into the NN to train it"
-		numBatchElements = len(batch.imgs)
-		sparse = self.toSparse(batch.gtTexts)
-		rate = 0.01 if self.batchesTrained < 10 else (0.001 if self.batchesTrained < 10000 else 0.0001) # decay learning rate
-		evalList = [self.optimizer, self.loss]
-		feedDict = {self.inputImgs : batch.imgs, self.gtTexts : sparse , self.seqLen : [Model.maxTextLen] * numBatchElements, self.learningRate : rate, self.is_train: True}
-		(_, lossVal) = self.sess.run(evalList, feedDict)
-		self.batchesTrained += 1
-		return lossVal
-
-
-	def dumpNNOutput(self, rnnOutput):
-		"dump the output of the NN to CSV file(s)"
-		dumpDir = '../dump/'
-		if not os.path.isdir(dumpDir):
-			os.mkdir(dumpDir)
-
-		# iterate over all batch elements and create a CSV file for each one
-		maxT, maxB, maxC = rnnOutput.shape
-		for b in range(maxB):
-			csv = ''
-			for t in range(maxT):
-				for c in range(maxC):
-					csv += str(rnnOutput[t, b, c]) + ';'
-				csv += '\n'
-			fn = dumpDir + 'rnnOutput_'+str(b)+'.csv'
-			print('Write dump of NN to file: ' + fn)
-			with open(fn, 'w') as f:
-				f.write(csv)
-
-
-	def inferBatch(self, batch, calcProbability=False, probabilityOfGT=False):
-		"feed a batch into the NN to recognize the texts"
-		
-		# decode, optionally save RNN output
-		numBatchElements = len(batch.imgs)
-		evalRnnOutput = self.dump or calcProbability
-		evalList = [self.decoder] + ([self.ctcIn3dTBC] if evalRnnOutput else [])
-		feedDict = {self.inputImgs : batch.imgs, self.seqLen : [Model.maxTextLen] * numBatchElements, self.is_train: False}
-		evalRes = self.sess.run(evalList, feedDict)
-		decoded = evalRes[0]
-		texts = self.decoderOutputToText(decoded, numBatchElements)
-		
-		# feed RNN output and recognized text into CTC loss to compute labeling probability
-		probs = None
-		if calcProbability:
-			sparse = self.toSparse(batch.gtTexts) if probabilityOfGT else self.toSparse(texts)
-			ctcInput = evalRes[1]
-			evalList = self.lossPerElement
-			feedDict = {self.savedCtcInput : ctcInput, self.gtTexts : sparse, self.seqLen : [Model.maxTextLen] * numBatchElements, self.is_train: False}
-			lossVals = self.sess.run(evalList, feedDict)
-			probs = np.exp(-lossVals)
-
-		# dump the output of the NN to CSV file(s)
-		if self.dump:
-			self.dumpNNOutput(evalRes[1])
-
-		return (texts, probs)
-	
-
-	def save(self):
-		"save model to file"
-		self.snapID += 1
-		self.saver.save(self.sess, '../model/snapshot', global_step=self.snapID)
- 
+    def save(self):
+        """ Save model to file """
+        self.snapID += 1
+        self.saver.save(self.sess, '../model/snapshot',
+                        global_step=self.snapID)
