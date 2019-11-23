@@ -83,7 +83,7 @@ def validate(model, loader):
 
     totalCER = []
     totalWER = []
-    print('HELP: ', len(loader))
+    #print('HELP: ', len(loader))
     while loader.hasNext():
         iterInfo = loader.getIteratorInfo()
         print('Batch:', iterInfo[0], '/', iterInfo[1])
