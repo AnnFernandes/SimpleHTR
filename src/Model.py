@@ -116,7 +116,7 @@ class Model:
             mean, variance = tf.nn.moments(conv, axes=[0])
             batch_norm = tf.nn.batch_normalization(
                 conv, mean, variance, offset=None, scale=None, variance_epsilon=0.001)
-            relu = tf.nn.relu(batch_norm)
+            relu = tf.nn.relu(conv)
             pool = tf.nn.max_pool(relu, (1, 2, 2, 1), (1, 2, 2, 1), 'VALID')
 
         # Seventh Layer: Conv (3x3) + Pool (2x2) - Output size: 100 x 8 x 512
@@ -133,7 +133,7 @@ class Model:
     def setupRNN(self, rnnIn4d):
         """ Create RNN layers and return output of these layers """
         rnnIn4d = tf.slice(rnnIn4d, [0, 0, 0, 0], [
-                           self.batchSize, 200, 1, 512])
+                           self.batchSize, 100, 1, 512])
         rnnIn3d = tf.squeeze(rnnIn4d)
 
         # 2 layers of LSTM cell used to build RNN
