@@ -119,7 +119,7 @@ class Model:
             relu = tf.nn.relu(conv)
             pool = tf.nn.max_pool(relu, (1, 2, 2, 1), (1, 2, 2, 1), 'VALID')
 
-         Seventh Layer: Conv (3x3) + Pool (2x2) - Output size: 100 x 8 x 512
+        #Seventh Layer: Conv (3x3) + Pool (2x2) - Output size: 100 x 8 x 512
         with tf.name_scope('Conv_Pool_7'):
             kernel = tf.Variable(tf.truncated_normal(
                 [3, 3, 512, 512], stddev=0.1))
