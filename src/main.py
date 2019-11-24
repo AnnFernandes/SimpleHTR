@@ -99,7 +99,7 @@ def validate(model, loader):
             currCER = dist/max(len(recognized[i]), len(batch.gtTexts[i]))
             totalCER.append(currCER)
 
-            currWER = wer(recognized[i].split(), batch.gtTexts[i].split())
+            currWER = wer(recognized[i].split(" "), batch.gtTexts[i].split(" "))
             totalWER.append(currWER)
 
             numCharErr += dist
