@@ -79,7 +79,7 @@ class DataLoader:
 			print("Damaged images expected:", bad_samples_reference)
 
 		# split into training and validation set: 95% - 5%
-		splitIdx = int(0.80 * len(self.samples))
+		splitIdx = int(0.90 * len(self.samples))
 		print('HELP: :', splitIdx)
 		self.trainSamples = self.samples[:splitIdx]
 		self.validationSamples = self.samples[splitIdx:]
@@ -89,7 +89,7 @@ class DataLoader:
 		self.validationWords = [x.gtText for x in self.validationSamples]
 
 		# number of randomly chosen samples per epoch for training 
-		self.numTrainSamplesPerEpoch = 200
+		self.numTrainSamplesPerEpoch = 50
 		
 		# start with train set
 		self.trainSet()
