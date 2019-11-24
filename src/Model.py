@@ -100,12 +100,12 @@ class Model:
             relu = tf.nn.relu(conv)
 
         # Fifth Layer: Conv (3x3) - Output size: 200 x 16 x 256
-        with tf.name_scope('Conv_5'):
-            kernel = tf.Variable(tf.truncated_normal(
-                [3, 3, 256, 256], stddev=0.1))
-            conv = tf.nn.conv2d(
-                relu, kernel, padding='SAME', strides=(1, 1, 1, 1))
-            relu = tf.nn.relu(conv)
+       # with tf.name_scope('Conv_5'):
+        #    kernel = tf.Variable(tf.truncated_normal(
+         #       [3, 3, 256, 256], stddev=0.1))
+          #  conv = tf.nn.conv2d(
+           #     relu, kernel, padding='SAME', strides=(1, 1, 1, 1))
+            #relu = tf.nn.relu(conv)
 
         # Sixth Layer: Conv (3x3) + Simple Batch Norm - Output size: 200 x 16 x 512
         with tf.name_scope('Conv_BN_6'):
@@ -119,14 +119,14 @@ class Model:
             relu = tf.nn.relu(conv)
             pool = tf.nn.max_pool(relu, (1, 2, 2, 1), (1, 2, 2, 1), 'VALID')
 
-        # Seventh Layer: Conv (3x3) + Pool (2x2) - Output size: 100 x 8 x 512
-        #with tf.name_scope('Conv_Pool_7'):
-            #kernel = tf.Variable(tf.truncated_normal(
-                #[3, 3, 512, 512], stddev=0.1))
-            #conv = tf.nn.conv2d(
-                #relu, kernel, padding='SAME', strides=(1, 1, 1, 1))
-            #relu = tf.nn.relu(conv)
-            #pool = tf.nn.max_pool(relu, (1, 2, 2, 1), (1, 2, 2, 1), 'VALID')
+         Seventh Layer: Conv (3x3) + Pool (2x2) - Output size: 100 x 8 x 512
+        with tf.name_scope('Conv_Pool_7'):
+            kernel = tf.Variable(tf.truncated_normal(
+                [3, 3, 512, 512], stddev=0.1))
+            conv = tf.nn.conv2d(
+                relu, kernel, padding='SAME', strides=(1, 1, 1, 1))
+            relu = tf.nn.relu(conv)
+            pool = tf.nn.max_pool(relu, (1, 2, 2, 1), (1, 2, 2, 1), 'VALID')
 
         return pool
 
