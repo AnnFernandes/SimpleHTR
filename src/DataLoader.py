@@ -79,7 +79,7 @@ class DataLoader:
 			print("Damaged images expected:", bad_samples_reference)
 
 		# split into training and validation set: 95% - 5%
-		splitIdx = int(0.70 * len(self.samples))
+		splitIdx = int(0.90 * len(self.samples))
 		self.trainSamples = self.samples[:splitIdx]
 		self.validationSamples = self.samples[splitIdx:]
 
