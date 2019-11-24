@@ -66,7 +66,8 @@ class DataLoader:
 			chars = chars.union(set(list(gtText)))
 
 			# check if image is not empty
-			if not os.path.getsize(fileName):
+			#if not os.path.getsize(fileName):
+			if line[1] == 'err':
 				bad_samples.append(lineSplit[0] + '.png')
 				continue
 
