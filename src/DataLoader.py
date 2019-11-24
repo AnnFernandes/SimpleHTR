@@ -81,6 +81,7 @@ class DataLoader:
 		# split into training and validation set: 95% - 5%
 		splitIdx = int(0.90 * len(self.samples))
 		print('HELP: :', splitIdx)
+		print('HELP: :', len(self.samples))
 		self.trainSamples = self.samples[:splitIdx]
 		self.validationSamples = self.samples[splitIdx:]
 
