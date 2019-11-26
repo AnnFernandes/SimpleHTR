@@ -20,7 +20,7 @@ def train(model, loader):
     epoch = 0  # Number of training epochs since start
     bestCharErrorRate = float('inf')  # Best valdiation character error rate
     noImprovementSince = 0  # Number of epochs no improvement of character error rate occured
-    earlyStopping = 15  # Stop training after this number of epochs without improvement
+    earlyStopping = 20  # Stop training after this number of epochs without improvement
     batchNum = 0
 
     totalEpoch = len(loader.trainSamples)//loader.numTrainSamplesPerEpoch
